@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 color ray_color(const ray& r, const hittable& world, int depth) {
     hit_record rec;
@@ -30,7 +31,7 @@ color ray_color(const ray& r, const hittable& world, int depth) {
     }
     vec3 unit_direction = unit_vector(r.direction());
     auto t = 0.5 * (unit_direction.y() + 1.0);
-    return color(0, 0, 0);// (1.0 - t)* color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+    return color(0.05, 0.08, 0.09);// (1.0 - t)* color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
 
 hittable_list random_scene() {
@@ -74,11 +75,12 @@ hittable_list random_scene() {
     auto material1 = make_shared<dielectric>(1.5);
     world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
 
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
+    //auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
+    auto material2 = make_shared<light_metal>(color(0.4, 0.2, 0.1), 0.7);
     world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
 
     //auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    auto material3 = make_shared<light>(color(0.7, 0.6, 0.5));
+    auto material3 = make_shared<light_metal>(color(0.7, 0.6, 0.5), 0.5);
     world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
 
     return world;
@@ -87,7 +89,7 @@ hittable_list random_scene() {
 int main() {
 	// image
     auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 400;
+    int image_width = 100;
     const int samples_per_pixel = 100;
     const int max_depth = 50;
 
@@ -121,6 +123,7 @@ int main() {
     if (!ost) { std::cerr << "couldn't open output file"; }
     
 	//render
+    auto start = std::chrono::high_resolution_clock::now();
 	ost << "P3\n" << image_width << ' ' << image_height << "\n255\n";
     for (int j = image_height - 1; j >= 0; --j) {
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
@@ -135,5 +138,9 @@ int main() {
             write_color(ost, pixel_color, samples_per_pixel);
         }
     }
-    std::cerr << "\nDone.\n";
+
+    // time calculation
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+    std::cerr << "\nDone in " << duration.count()<<" seconds.\n";
 }
