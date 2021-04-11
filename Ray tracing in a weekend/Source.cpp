@@ -6,6 +6,8 @@
 #include "material.h"
 #include "moving_sphere.h"
 
+#include "bvh.h"
+
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -80,7 +82,7 @@ hittable_list random_scene() {
     world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
 
     //auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    auto material3 = make_shared<light_metal>(color(0.7, 0.6, 0.5), 0.5);
+    auto material3 = make_shared<light_metal>(color(0.7, 0.6, 0.5), 0.9);
     world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
 
     return world;
@@ -89,23 +91,13 @@ hittable_list random_scene() {
 int main() {
 	// image
     auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 100;
+    int image_width = 500;
     const int samples_per_pixel = 100;
     const int max_depth = 50;
 
     // World
-    auto world = random_scene();
-
-    //auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
-    //auto material_center = make_shared<lambertian>(color(0.1, 0.2, 0.5));
-    //auto material_left = make_shared<dielectric>(1.5);
-    //auto material_right = make_shared<metal>(color(0.8, 0.6, 0.2), 0.0);
-
-    //world.add(make_shared<sphere>(point3(0.0, -100.5, -1.0), 100.0, material_ground));
-    //world.add(make_shared<sphere>(point3(0.0, 0.0, -1.0), 0.5, material_center));
-    //world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), 0.5, material_left));
-    //world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), -0.45, material_left));
-    //world.add(make_shared<sphere>(point3(1.0, 0.0, -1.0), 0.5, material_right));
+    //auto world = random_scene();
+    bvh_node world{ random_scene(), 0.0, 1.0};
 
     // Camera
     point3 lookfrom(13, 2, 3);
