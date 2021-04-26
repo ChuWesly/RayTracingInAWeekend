@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <thread>
 
 color ray_color(const ray& r, const color& background, const hittable& world, int depth) {
     hit_record rec;
@@ -184,6 +185,23 @@ hittable_list cornell_smoke() {
     return objects;
 }
 
+void calc_pixel(std::vector<std::string>& pixels, int starth, int endh, camera cam, bvh_node world, int image_height, int image_width, int max_depth, int samples_per_pixel, color background) {
+    for (int j = endh - 1; j >= starth; --j) {
+        //std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+        for (int i = 0; i < image_width; ++i) {
+            color pixel_color(0, 0, 0);
+            for (int s = 0; s < samples_per_pixel; s++) {
+                auto u = double(i + random_double()) / (image_width - 1);
+                auto v = double(j + random_double()) / (image_height - 1);
+                ray r = cam.get_ray(u, v);
+                pixel_color += ray_color(r, background, world, max_depth);
+            }
+            int counter = (image_height - 1 - j) * image_width + i;
+            pixels[counter] = write_color(pixel_color, samples_per_pixel);
+        }
+    }
+}
+
 int main() {
 	// image
     auto aspect_ratio = 16.0 / 9.0;
@@ -250,7 +268,7 @@ int main() {
         world = bvh_node(cornell_smoke(), 0, 1);
         aspect_ratio = 1.0;
         image_width = 600;
-        samples_per_pixel = 20;
+        samples_per_pixel = 80;
         lookfrom = point3(278, 278, -800);
         lookat = point3(278, 278, 0);
         vfov = 40.0;
@@ -274,20 +292,25 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 	ost << "P3\n" << image_width << ' ' << image_height << "\n255\n";
     std::vector<std::string> pixels(image_width * image_height);
-    for (int j = image_height - 1; j >= 0; --j) {
-        std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-        for (int i = 0; i < image_width; ++i) {
-            color pixel_color(0,0,0);
-            for (int s = 0; s < samples_per_pixel; s++) {
-                auto u = double(i + random_double()) / (image_width - 1);
-                auto v = double(j + random_double()) / (image_height - 1);
-                ray r = cam.get_ray(u, v);
-                pixel_color += ray_color(r, background, world, max_depth);
-            }
-            int counter = (image_height - 1 - j) * image_width + i;
-            pixels[counter] = write_color(pixel_color, samples_per_pixel);
+    int N_threads = 8;
+    int step = image_height / N_threads;
+    std::vector<std::thread> threads;
+    for (int i = 0; i < N_threads; i++) {
+        int endh = (i+1)*step;
+        if (i + 1 == N_threads) {
+            endh = image_height;
+        }
+        int starth = i*step;
+        std::cout << starth << "-" << endh << "    " << i -1 << N_threads << std::endl;
+        threads.push_back(std::thread(calc_pixel, std::ref(pixels), starth, endh, cam, world,
+                        image_height, image_width, max_depth, samples_per_pixel, background));
+    }
+    for (std::thread& t : threads) {
+        if (t.joinable()) {
+            t.join();
         }
     }
+
     for (std::string pixel : pixels) {
         ost << pixel;
     }
