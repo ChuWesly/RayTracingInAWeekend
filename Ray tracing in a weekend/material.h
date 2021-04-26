@@ -2,6 +2,7 @@
 #define MATERIAL_H
 
 #include "rtweekend.h"
+#include "texture.h"
 
 struct hit_record;
 
@@ -14,7 +15,8 @@ public:
 
 class lambertian : public material {
 public:
-    lambertian(const color& a) : albedo(a) {}
+    lambertian(const color& a) : albedo(make_shared<solid_color>(a)) {}
+    lambertian(shared_ptr<texture> a) : albedo(a) {}
 
     virtual bool scatter(
         const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered, bool& light
@@ -26,12 +28,12 @@ public:
             scatter_direction = rec.normal;
 
         scattered = ray(rec.p, scatter_direction, r_in.time());
-        attenuation = albedo;
+        attenuation = albedo->value(rec.u, rec.v, rec.p);
         return true;
     }
 
 public:
-    color albedo;
+    shared_ptr<texture> albedo;
 };
 
 class metal : public material {
@@ -104,5 +106,29 @@ public:
 
 public:
     color albedo;
+};
+
+class light_metal : public material {
+public:
+    light_metal(const color& a, const double _light_perc) : albedo(a), light_perc(_light_perc){}
+
+    virtual bool scatter(
+        const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered, bool& light_source
+    ) const override {
+        double chance_reflect = random_double();
+        attenuation = albedo;
+        if (chance_reflect < light_perc) {
+            light_source = true;
+            return true;
+        }
+        vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
+        scattered = ray(rec.p, reflected);
+        attenuation = albedo;
+        return (dot(scattered.direction(), rec.normal) > 0);
+    }
+
+public:
+    color albedo;
+    double light_perc; //if 1 only acts as light source if 0 act like ordinary metal
 };
 #endif
